@@ -1,0 +1,78 @@
+Problem statement 4:
+Write a pig script to find no of complaints filed with product type has &quot;Debt collection&quot; for the year 2015
+
+File Name: USAPS4.pig
+-----------------------
+REGISTER '/usr/local/pig/lib/piggybank.jar';
+
+Data = LOAD '/home/acadgild/usaconcom/Consumer_Complaints.csv' using org.apache.pig.piggybank.storage.CSVExcelStorage(',' , 'NO_MULTILINE','UNIX','SKIP_INPUT_HEADER') as (date_recd: chararray, product: chararray, sub_prod: chararray, issue: chararray, sub_issue: chararray, complaint: chararray, public_response: chararray,company:chararray, state:chararray, zipcode:chararray, submitted_channel:chararray, date_submitted:chararray, company_response:chararray, timely_response:chararray, consumer_disputed:chararray, complaint_id:chararray);
+DebtFilterData = FILTER Data BY product == 'Debt collection';
+YrFilterData = FILTER DebtFilterData BY SUBSTRING(date_recd,6,10) == '2015';
+GroupData = GROUP YrFilterData ALL; 
+FinalCnt = FOREACH GroupData GENERATE COUNT(YrFilterData);
+STORE FinalCnt INTO '/home/acadgild/UsaDebt2015' USING PigStorage(','); 
+
+Execute the script 
+------------------
+[acadgild@localhost ~]$pig -x local USAPS4.pig
+
+Output after executing the script using : 
+-----------------------------------------
+[acadgild@localhost ~]$ cat /home/acadgild/UsaDebt2015/p*
+31828
+
+Copy the output to HDFS
+------------------------
+[acadgild@localhost ~]$ hadoop fs -put UsaDebt2015 /user/acadgild
+
+Open another terminal:Terminal 2 and runl all the daemons using 
+1) start-all.sh
+2) Make sure the daemons are up using 
+[acadgild@localhost ~]$ jps
+16884 Jps
+3382 SecondaryNameNode
+3560 ResourceManager
+3118 NameNode
+3663 NodeManager
+3215 DataNode
+
+3) Run MySQL using the following commands
+3.1) sudo service mysqld start
+3.2) mysql -u root
+
+4) Create a new Database:
+
+mysql> create database Usa;
+Query OK, 1 row affected (0.00 sec)
+
+mysql>use Usa;
+Database changed
+
+Create a table similar to the structure of the output file contents:
+mysql>create table Debt2015 (Debt_Cnt int);
+Query OK, 0 rows affected (0.01 sec)
+
+
+mysql>show tables;
++-----------------+
+| Tables_in_Usa   |
++-----------------+
+| Complaints      |
+| Debt2015        |
+| Response        |
+| SameDateProcess |
++-----------------+
+4 rows in set (0.00 sec)
+
+In Terminal1, run the sqoop command to Export the Pig Script analysis from HDFS to MySQL:
+----------------------------------------------------------------------------------------
+sqoop export --connect jdbc:mysql://localhost/Usa --username 'root' -P --table Debt2015 --export-dir '/user/acadgild/UsaDebt2015/part-r-00000' --input-fields-terminated-by ',' -m 1
+
+In Terminal2, check for if the Tables have been populated with data:
+mysql> select * from Debt2015;
++----------+
+| Debt_Cnt |
++----------+
+|    31828 |
++----------+
+1 row in set (0.00 sec)
