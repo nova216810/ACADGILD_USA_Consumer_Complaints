@@ -1,0 +1,51 @@
+Moving Dataset from Local to HDFS using Flume
+----------------------------------------------
+
+UsaCC.conf
+-----------
+#Specify source, channel and sink
+usagent.sinks =  usasink
+usagent.sources = ussource
+usagent.channels = fileChannel
+
+#Flume Configuration Starts
+# Define a file channel called fileChannel on usagent
+
+usagent.channels.fileChannel.type = file 
+
+# on linux FS
+usagent.channels.fileChannel.capacity = 200000
+usagent.channels.fileChannel.transactionCapacity = 1000
+
+# Define a source for usagent
+
+usagent.sources.ussource.type = spooldir
+
+# on linux FS
+#Spooldir in my case is /home/acadgild/usaconcom
+
+usagent.sources.ussource.spoolDir = /home/acadgild/usaconcom
+usagent.sources.ussource.fileHeader = false
+usagent.sources.ussource.fileSuffix = .COMPLETED
+usagent.sinks.usasink.type = hdfs
+
+#Sink is /usaimport under hdfs
+
+usagent.sinks.usasink.hdfs.path = hdfs://localhost.localdomain:9000/usaimport
+usagent.sinks.usasink.hdfs.batchSize = 1000
+usagent.sinks.usasink.hdfs.rollSize = 268435456
+usagent.sinks.usasink.hdfs.rollInterval = 0
+usagent.sinks.usasink.hdfs.rollCount = 5000
+usagent.sinks.usasink.hdfs.writeFormat=Text
+
+usagent.sinks.usasink.hdfs.fileType = DataStream
+usagent.sources.ussource.channels = fileChannel
+usagent.sinks.usasink.channel = fileChannel
+
+
+Execute the Flume using the command:
+-----------------------------------
+flume-ng agent -n usagent -f /home/acadgild/UsaCC.conf
+
+
+Once the flume has copied the file from local to HDFS, the Dataset will also be found at /usaimport
